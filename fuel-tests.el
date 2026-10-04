@@ -36,6 +36,41 @@
                (buffer-string))
              "a quotation with stack effect ( args kw -- ret )"))))
 
+(ert-deftest fuel-markup-inputs-and-outputs ()
+  (with-temp-buffer
+    (fuel-markup--print
+     '(($inputs ("word" ($link word)) ("name" "a property name"))
+       ($outputs ("value" "a property value"))
+       ($description "Retrieves a word property.")))
+    (should (equal (buffer-substring-no-properties (point-min) (point-max))
+                   (concat "Inputs\n"
+                           " word - word\n"
+                           " name - a property name\n\n"
+                           "Outputs\n"
+                           " value - a property value\n\n"
+                           "Word description\n"
+                           "Retrieves a word property.\n")))
+    (goto-char (point-min))
+    (search-forward "word - ")
+    (let ((button (button-at (point))))
+      (should button)
+      (should (equal (button-get button 'markup-link) "word"))
+      (should (eq (button-get button 'markup-link-type) 'word)))))
+
+(ert-deftest fuel-markup-empty-values ()
+  (dolist (entry '(($inputs . "Inputs")
+                   ($outputs . "Outputs")
+                   ($values . "Inputs and outputs")))
+    ;; Factor can send empty markup as either a symbol or a list.
+    (dolist (markup (list (car entry) (list (car entry))))
+      (should (equal (fuel-markup--print-str markup)
+                     (concat (cdr entry) "\nNone\n"))))))
+
+(ert-deftest fuel-markup-values-compatibility ()
+  (should (equal (fuel-markup--print-str
+                  '($values ("x" "number") ("y" "number")))
+                 "Inputs and outputs\n x - number\n y - number\n")))
+
 ;; fuel-help
 (ert-deftest find-in-w/vocabulary ()
   (should (equal
